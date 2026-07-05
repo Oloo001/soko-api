@@ -1,0 +1,104 @@
+
+generator client {
+  provider        = "prisma-client-js"   
+  previewFeatures = ["driverAdapters"]   // Needed for PrismaPg(pool)
+  engineType      = "client"             // Slims it down for the adapter
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  phone     String?  @unique   // for Mpesa (STK push needs a phone number)
+  name      String
+  passwordHash String
+  avatarUrl String?
+  bio       String?
+  createdAt DateTime @default(now())
+
+  listings  Listing[]
+  comments  Comment[]
+  likes     Like[]
+
+  following Follow[] @relation("Following")
+  followers Follow[] @relation("Followers")
+
+  payments  Payment[] @relation("Buyer")
+  sales     Payment[] @relation("Seller")
+}
+
+model Listing {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  price       Int      // store in cents/lowest unit — never floats for money
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  seller      User     @relation(fields: [sellerId], references: [id])
+  sellerId    String
+
+  likes       Like[]
+  comments    Comment[]
+  payments    Payment[]
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  follower    User     @relation("Following", fields: [followerId], references: [id])
+  followerId  String
+  following   User     @relation("Followers", fields: [followingId], references: [id])
+  followingId String
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  listingId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  text      String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  listingId String
+  createdAt DateTime @default(now())
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  amount        Int
+  status        PaymentStatus @default(PENDING)
+  mpesaReceipt  String?
+  checkoutRequestId String?  // Mpesa STK push tracking ID
+
+  buyer         User     @relation("Buyer", fields: [buyerId], references: [id])
+  buyerId       String
+  seller        User     @relation("Seller", fields: [sellerId], references: [id])
+  sellerId      String
+  listing       Listing  @relation(fields: [listingId], references: [id])
+  listingId     String
+
+  createdAt     DateTime @default(now())
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
