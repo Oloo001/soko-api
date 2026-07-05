@@ -1,6 +1,7 @@
 // app/api/listings/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getUserIdFromRequest } from '@/lib/auth'
 import { z } from 'zod'
 
 const createListingSchema = z.object({
@@ -23,13 +24,20 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const userId = getUserIdFromRequest(request)
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const body = await request.json()
-  const parsed = createListingSchema.safeParse(body)
+  const parsed = createListingSchema.omit({ sellerId: true }).safeParse(body)
 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const listing = await prisma.listing.create({ data: parsed.data })
+  const listing = await prisma.listing.create({
+    data: { ...parsed.data, sellerId: userId },
+  })
   return NextResponse.json(listing, { status: 201 })
 }
