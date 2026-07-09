@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = getUserIdFromRequest(request)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const listingId = params.id
+  const listingId = (await params).id
 
   const existing = await prisma.like.findUnique({
     where: { userId_listingId: { userId, listingId } },

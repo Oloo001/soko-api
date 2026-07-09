@@ -6,16 +6,17 @@ import { z } from 'zod'
 
 const commentSchema = z.object({ text: z.string().min(1).max(500) })
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const paramsData = await params
   const comments = await prisma.comment.findMany({
-    where: { listingId: params.id },
+    where: { listingId: paramsData.id },
     orderBy: { createdAt: 'asc' },
     include: { user: { select: { id: true, name: true, avatarUrl: true } } },
   })
   return NextResponse.json(comments)
 }
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = getUserIdFromRequest(request)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
   const comment = await prisma.comment.create({
-    data: { text: parsed.data.text, userId, listingId: params.id },
+    data: { text: parsed.data.text, userId, listingId: (await params).id },
     include: { user: { select: { id: true, name: true, avatarUrl: true } } },
   })
   return NextResponse.json(comment, { status: 201 })

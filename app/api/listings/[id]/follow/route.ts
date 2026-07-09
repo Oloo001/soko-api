@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const followerId = getUserIdFromRequest(request)
   if (!followerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const followingId = params.id
+  const followingId = (await params).id
   if (followerId === followingId) {
     return NextResponse.json({ error: "Can't follow yourself" }, { status: 400 })
   }

@@ -3,9 +3,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getUserIdFromRequest } from '@/lib/auth'
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const viewerId = getUserIdFromRequest(request)
-  const userId = params.id
+  const paramsData = await params
+  const userId = paramsData.id
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
